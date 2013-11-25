@@ -19,11 +19,11 @@ func NewUrlGen(baseUrl string) *UrlGen {
 
 const degToRad = math.Pi / 180
 
-func (t UrlGen) coordsToTileNumber(lat float64, lon float64, zoom int) (tileX, tileY int) {
+func (t UrlGen) coordsToTileNumber(lat float64, lon float64, zoom int) (tileX, tileY int64) {
 	latRad := lat * degToRad
 	n := math.Pow(2, float64(zoom))
-	tileY = int((1.0 - math.Log(math.Tan(lat)+(1/math.Cos(latRad)))/math.Pi) / 2.0 * float64(n))
-	tileX = int((lon + 180.0) / 360.0 * float64(n))
+	tileY = int64((1.0 - math.Log(math.Tan(latRad)+(1/math.Cos(latRad)))/math.Pi) / 2.0 * float64(n))
+	tileX = int64((lon + 180.0) / 360.0 * float64(n))
 	return
 }
 
@@ -59,10 +59,9 @@ func (t UrlGen) GetAllSurroundingTiles(lat float64, lon float64, zoom int) image
 	tileX, tileY := t.coordsToTileNumber(lat, lon, zoom)
 	for xx := 0; xx < numOfTiles; xx++ {
 		for yy := 0; yy < numOfTiles; yy++ {
-			url := fmt.Sprintf("%s/%d/%d/%d.png", t.baseUrl, zoom, tileX+xx, tileY+yy)
+			url := fmt.Sprintf("%s/%d/%d/%d.png", t.baseUrl, zoom, tileX+int64(xx), tileY+int64(yy))
 			go func(xx, yy int) {
 				tilesChannel <- chanAndPos{t.getTileFromServer(url), [2]int{xx, yy}}
-				log.Println(xx, yy, "Done")
 			}(xx, yy)
 		}
 	}
@@ -70,7 +69,6 @@ func (t UrlGen) GetAllSurroundingTiles(lat float64, lon float64, zoom int) image
 	dest := image.NewRGBA(image.Rect(0, 0, tileSize*numOfTiles, tileSize*numOfTiles))
 	for ii := 0; ii < numOfTiles*numOfTiles; ii++ {
 		tilePos = <-tilesChannel
-		log.Println(tilePos)
 		sr := tilePos.Tile.Bounds()
 		dstPos := image.Rect(
 			tilePos.Pos[0]*tileSize,
@@ -78,21 +76,7 @@ func (t UrlGen) GetAllSurroundingTiles(lat float64, lon float64, zoom int) image
 			tilePos.Pos[0]*tileSize+tileSize,
 			tilePos.Pos[1]*tileSize+tileSize,
 		)
-		log.Println(dstPos)
 		draw.Draw(dest, dstPos, tilePos.Tile, sr.Min, draw.Src)
 	}
 	return dest
 }
-
-/*
-func main() {
-	m, _, err := image.Decode(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-	dest := image.NewRGBA(image.Rect(0, 0, 512, 512))
-	sr := m.Bounds()
-	draw.Draw(dest, image.Rect(0, 0, 255, 255), m, sr.Min, draw.Src)
-	//png.Encode(fo, dest)
-
-}*/

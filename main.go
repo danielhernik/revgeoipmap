@@ -11,6 +11,7 @@ import (
 	"log"
 	"operarevgeoip/tiles"
 	"os"
+	"strconv"
 )
 
 var gi *geoip.GeoIP
@@ -80,10 +81,13 @@ func reverseGeoIP(ctx *web.Context, val string) string {
 }
 
 func getBigTile(ctx *web.Context, val string) {
+	zoom, err := strconv.Atoi(val)
+	if err != nil {
+		log.Fatal(err)
+	}
 	remoteIP := getRealIP(ctx)
 	var geoipRecord *geoip.GeoIPRecord = gi.GetRecord(remoteIP)
-	log.Println(geoipRecord)
-	tilefile := tileUrlGenerator.GetAllSurroundingTiles(float64(geoipRecord.Latitude), float64(geoipRecord.Longitude), 8)
+	tilefile := tileUrlGenerator.GetAllSurroundingTiles(float64(geoipRecord.Latitude), float64(geoipRecord.Longitude), zoom)
 	ctx.SetHeader("Content-Type", "image/png", true)
 	png.Encode(ctx, tilefile)
 }
